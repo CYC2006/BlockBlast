@@ -1,9 +1,10 @@
 import pygame
 import sys
+from solver import solve
 
 # Window
 WINDOW_WIDTH  = 780
-WINDOW_HEIGHT = 900
+WINDOW_HEIGHT = 800
 
 # 8x8 board grid
 GRID_COLS = 8
@@ -11,7 +12,7 @@ GRID_ROWS = 8
 CELL_SIZE = 56
 CELL_GAP  = 5
 GRID_OFFSET_X = (WINDOW_WIDTH - (GRID_COLS * (CELL_SIZE + CELL_GAP) - CELL_GAP)) // 2
-GRID_OFFSET_Y = 90
+GRID_OFFSET_Y = 20
 
 # 5x5 piece editor
 PIECE_COLS = 5
@@ -21,19 +22,19 @@ PIECE_GAP  = 4
 PIECE_EDITOR_X = 55
 
 # Mini piece display
-MINI_CELL = 18
+MINI_CELL = 24
 MINI_GAP  = 2
 
 MAX_PIECES = 3
 
 # Derived layout
 _grid_h        = GRID_ROWS * (CELL_SIZE + CELL_GAP) - CELL_GAP   # 483
-PIECE_AREA_TOP = GRID_OFFSET_Y + _grid_h + 40                     # 613
-PIECE_EDITOR_Y = PIECE_AREA_TOP + 15
+PIECE_AREA_TOP = GRID_OFFSET_Y + _grid_h + 20                     # 523
+PIECE_EDITOR_Y = PIECE_AREA_TOP + 12
 
 _editor_w  = PIECE_COLS * (PIECE_CELL + PIECE_GAP) - PIECE_GAP   # 196
-DIVIDER_X  = PIECE_EDITOR_X + _editor_w + 42                     # 293
-MINI_START_X = DIVIDER_X + 22                                     # 315
+DIVIDER_X  = PIECE_EDITOR_X + _editor_w + 18                     # 269
+MINI_START_X = DIVIDER_X + 18                                     # 287
 
 # Colors — black/gray/white
 C_BG          = (14,  14,  14)
@@ -63,7 +64,6 @@ class App:
         self.clock = pygame.time.Clock()
 
         bold = "Arial Black"
-        self.font_title  = pygame.font.SysFont(bold, 28)
         self.font_label  = pygame.font.SysFont(bold, 14)
         self.font_btn    = pygame.font.SysFont(bold, 15)
         self.font_piece  = pygame.font.SysFont(bold, 15)   # Piece N labels
@@ -140,7 +140,9 @@ class App:
                     continue
 
                 if self.btn_solve_rect.collidepoint(mx, my):
-                    continue   # placeholder — solver not yet implemented
+                    result = solve(self.grid, self.pieces)
+                    print(result)
+                    continue
 
                 removed = False
                 for i, rect in enumerate(self.mini_piece_rects):
@@ -301,13 +303,10 @@ class App:
         mx, my = pygame.mouse.get_pos()
         self.screen.fill(C_BG)
 
-        title = self.font_title.render("BlockBlast Helper", True, C_TEXT)
-        self.screen.blit(title, title.get_rect(centerx=WINDOW_WIDTH // 2, y=22))
-
         self.draw_grid(mx, my)
 
         gr = self.grid_pixel_rect()
-        self.btn_clear_rect = pygame.Rect(gr.right - 82, gr.top - 38, 82, 28)
+        self.btn_clear_rect = pygame.Rect(gr.right + 12, gr.top, 82, 30)
         self.draw_button("Clear", self.btn_clear_rect, mx, my)
 
         self.draw_piece_editor(mx, my)
