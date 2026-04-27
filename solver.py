@@ -4,7 +4,7 @@ BOARD_SIZE = 8
 
 
 def normalize_piece(piece):
-    """Convert a 5x5 boolean grid into a list of (row, col) offsets, origin at (0,0)."""
+    """Convert 5×5 boolean grid → list of (row, col) offsets with origin at (0,0)."""
     cells = [(r, c) for r in range(5) for c in range(5) if piece[r][c]]
     if not cells:
         return []
@@ -27,11 +27,9 @@ def place_and_clear(board, cells, ar, ac):
     b = [row[:] for row in board]
     for pr, pc in cells:
         b[ar + pr][ac + pc] = True
-    # Clear complete rows
     for r in range(BOARD_SIZE):
         if all(b[r]):
             b[r] = [False] * BOARD_SIZE
-    # Clear complete columns
     for c in range(BOARD_SIZE):
         if all(b[r][c] for r in range(BOARD_SIZE)):
             for r in range(BOARD_SIZE):
@@ -39,29 +37,71 @@ def place_and_clear(board, cells, ar, ac):
     return b
 
 
-def _try_place(board, pieces_cells):
-    """Recursively try to place each piece in order. Returns True if all succeed."""
-    if not pieces_cells:
-        return True
-    cells = pieces_cells[0]
+def get_clearing(board, cells, ar, ac):
+    """Return (rows, cols) that will be cleared when piece is placed at (ar, ac)."""
+    b = [row[:] for row in board]
+    for pr, pc in cells:
+        b[ar + pr][ac + pc] = True
+    rows = [r for r in range(BOARD_SIZE) if all(b[r])]
+    cols = [c for c in range(BOARD_SIZE) if all(b[r][c] for r in range(BOARD_SIZE))]
+    return rows, cols
+
+
+def precompute_states(initial_board, solution):
+    """Return board state before each step (length = n_steps + 1)."""
+    states = [initial_board]
+    board = initial_board
+    for (_, cells, ar, ac) in solution:
+        board = place_and_clear(board, cells, ar, ac)
+        states.append(board)
+    return states
+
+
+def _find_solutions(board, remaining, current_steps, solutions, max_solutions):
+    if len(solutions) >= max_solutions:
+        return
+    if not remaining:
+        solutions.append(list(current_steps))
+        return
+
+    piece_idx, cells = remaining[0]
+    if not cells:
+        current_steps.append((piece_idx, cells, 0, 0))
+        _find_solutions(board, remaining[1:], current_steps, solutions, max_solutions)
+        current_steps.pop()
+        return
+
     max_r = max(r for r, c in cells)
     max_c = max(c for r, c in cells)
+
     for ar in range(BOARD_SIZE - max_r):
+        if len(solutions) >= max_solutions:
+            return
         for ac in range(BOARD_SIZE - max_c):
+            if len(solutions) >= max_solutions:
+                return
             if can_place(board, cells, ar, ac):
                 new_board = place_and_clear(board, cells, ar, ac)
-                if _try_place(new_board, pieces_cells[1:]):
-                    return True
-    return False
+                current_steps.append((piece_idx, cells, ar, ac))
+                _find_solutions(new_board, remaining[1:], current_steps, solutions, max_solutions)
+                current_steps.pop()
 
 
-def solve(board, pieces):
-    """Return True if all pieces can be placed on the board in some order."""
-    normalized = [normalize_piece(p) for p in pieces]
-    normalized = [c for c in normalized if c]   # skip empty pieces
-    if not normalized:
-        return True
-    for perm in permutations(normalized):
-        if _try_place(board, list(perm)):
-            return True
-    return False
+def solve(board, pieces, max_solutions=20):
+    """Return (solutions, capped).
+    Each solution = [(piece_idx, cells, anchor_row, anchor_col), ...]
+    capped = True if ≥ max_solutions solutions exist.
+    """
+    indexed = [(i, normalize_piece(p)) for i, p in enumerate(pieces)]
+    indexed = [(i, c) for i, c in indexed if c]
+    if not indexed:
+        return [], False
+
+    solutions = []
+    for perm in permutations(indexed):
+        if len(solutions) >= max_solutions:
+            break
+        _find_solutions(board, list(perm), [], solutions, max_solutions)
+
+    capped = len(solutions) >= max_solutions
+    return solutions, capped
